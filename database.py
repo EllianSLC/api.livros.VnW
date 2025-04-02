@@ -1,17 +1,30 @@
 import sqlite3
-from flask import g
 
-DATABASE = 'database.db'
+def conectar_bd():
+    return sqlite3.connect("database.db")
 
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-    return db
+def criar_tabela():
+    with conectar_bd() as conn, open("schema.sql", "r") as f:
+        conn.executescript(f.read())
+        conn.commit()
 
-def init_db(app):  # Modificado para aceitar 'app'
-    with app.app_context():
-        db = get_db()
-        with app.open_resource('schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
+def inserir_livro(titulo, categoria, autor, imagem_url):
+    with conectar_bd() as conn:
+        conn.execute("""
+            INSERT INTO livros (titulo, categoria, autor, imagem_url)
+            VALUES (?, ?, ?, ?)""",
+            (titulo, categoria, autor, imagem_url))
+        conn.commit()
+
+def listar_livros():
+    with conectar_bd() as conn:
+        return conn.execute("SELECT * FROM livros").fetchall()
+
+def deletar_livro(livro_id):
+    with conectar_bd() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM livros WHERE id = ?", (livro_id,))
+        conn.commit()
+    return cursor.rowcount
+
+criar_tabela()
